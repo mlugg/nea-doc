@@ -10,8 +10,22 @@ jobs:
         uses: xu-cheng/latex-action@v2
         with:
           root_file: report.tex
-      - name: Upload report
-        uses: actions/upload-artifact@v2
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: report
-          path: report.pdf
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.output.upload_url }}
+          asset_path: ./report.pdf
+          asset_name: report.pdf
+          asset_content_type: application/pdf

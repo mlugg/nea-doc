@@ -17,4 +17,4 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           source: "report.pdf"
-          target: "/var/www/html/nea/report.pdf"
+          target: "/var/www/html/nea"

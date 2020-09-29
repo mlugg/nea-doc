@@ -266,6 +266,95 @@ evaluation occurs in most lazy languages. For this, we evaluate the expression
 normal form. This guarantees that, as long as the value is of the correct type,
 the constructor in question will be evaluated, and can be matched against. 
 
+\subsection{Garbage collection}
+
+Like most high-level languages, this language will have automatic memory
+management. Therefore, I will have to implement a garbage collector
+(GC). There are several common types of garbage collector.
+
+\subsubsection{Reference counting}
+
+Reference counting (refcounting) is one of the simplest methods of
+garbage collection. In this method, every object managed by the GC has a
+field in its header specifying how many other objects reference it (i.e.
+have a pointer to it). Whenever another object makes a reference to this
+object, its reference count is incremented. When a reference is deleted,
+the reference count is decremented. After this decrement, it is also
+checked whether the reference count has reached zero; if it has, the
+object is freed.
+
+This method of garbage collection has some advantages. One is that it
+does not ``stop the world''; this means that, as oppose to most other
+methods, the program never has to pause execution for an extended period
+of time to allow the garbage collector to run. There is one exception to
+this rule however, and it is one of the issues with refcounting;
+occasionally, freeing one object can recursively remove many references
+and free tens or hundreds of objects, resulting in a noticeable pause.
+Refcounting is incredibly simple to implement. However, it has one more
+major flaw: it fails to ever clean up any kind of recursive
+datastructure. Due to immutability, this may not actually be a problem
+in an eager purely functional language; however, lazy semantics allow us
+to easily define recursive or mutually recursive datastructures. For
+instance, a definition like \verb'x = 1 : x' defines an infinitely long
+list of \verb'1's, and because it references itself (hence always has a
+refcount of at least one), it would never be cleaned up, which could
+result in a memory leak. For this reason, refcounting is rarely used as
+a garbage collection method (at least, not in isolation).
+
+\subsubsection{Mark-and-sweep}
+
+Mark-and-sweep garbage collectors are one of the most common designs for
+GCs, used by languages such as Java and Go. In this design, at certain
+times (generally when the heap reaches capacity), execution is paused
+(this is a ``stop-the-world'' design), and garbage collection begins.
+The garbage collector looks at all objects accessible from the current
+scope of execution, and sets a special bit in the header to mark the
+object as accessible. It then recursively does the same to all objects
+referenced by these objects, and all objects referenced by those, etc.
+It repeats this entire process for every stack frame and, at the end, it
+has marked every ``active'' object (i.e. one which is accessible by
+code). Finally, it iterates over all the allocated objects; any that are
+not marked are freed.
+
+This type of garbage collector does not have any issues with recursive
+data structures; it will always be able to free as many objects as
+possible. However, it can be quite slow; this can be seen in many larger
+Java applications, which can have noticable pauses of around a second if
+a lot of garbage is being created.
+
+\subsubsection{Generational}
+
+A generational garbage collector allocates a small ``nursery'' of memory
+where new allocations will occur, normally consisting of aroun 1MiB of
+memory. Allocations occur sequentially in this nursery, until there is
+not enough space remaining for a required allocation. At this point,
+``minor GC'' is triggered. The garbage collector then does a
+mark-and-sweep style check of all the objects on this nursery; it finds
+those which are accessible by the program. However, instead of just
+marking the objects as accessible, it copies them to a new
+``generation'' on the heap (this makes it a ``copying GC'') and updates
+all references to the object to the new pointer. Objects that are
+inaccessible are not copied. After this process is complete, every
+object in the nursery has either been found to be accessible, and copied
+to the heap, or found to be inaccessible, and ignored. Therefore, no
+object is stored in the nursery; so program execution can resume,
+reusing the nursery for new allocations. Of course, occasionally, you
+also need to perform garbage collection on the larger ``generation'';
+this is called major GC. There are many variations on the basic design,
+but the broad idea is to have separate regions of memory for different
+ages of objects.
+
+This can be a very powerful technique in purely functional languages.
+This is due to immutability; because objects are immutable, it is
+impossible for an object in a younger generation to be referred to by an
+object in an older generation. This makes identifying referenced objects
+faster and more efficient. As such, GHC generally employs a generational
+approach to garbage collection. Recently, it has been updated to also
+optionally use a more complex hybrid approach with mark-and-sweep which
+can be more suitable for latency-sensitive programs. I will likely
+implement a simple moving generational garbage collector, as it provides
+a nice balance between efficiency and simplicity of implementation.
+
 \subsection{Objectives}
 
 \begin{itemize}

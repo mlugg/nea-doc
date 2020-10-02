@@ -137,20 +137,6 @@ structures.
 
 \subsubsection{Lazy evaluation}
 
-Laziness is a relatively broad term in programming langauges; language like
-Haskell provide purely lazy semantics, while some like OCaml allow you to opt-in
-to laziness, and others like Perl 6 support laziness only in instances of
-certain data structures (like lists). Here, we will be looking at a fully lazily
-evaluated language, as in Haskell. This form of laziness can be incredibly
-useful for defining recursive datastructures; for instance, the definition of an
-infinite list in Haskell is simply as follows: 
-
-\begin{verbatim}
-  x = 1 : x 
-\end{verbatim}
-
-This definition works because the elements of x are only evaluated when they
-need to be. 
 
 \subsubsection{Type systems}
 
@@ -252,6 +238,9 @@ called. This means a call like the following...
   const 10 (factorial 100000000)
 \end{verbatim}
 
+This definition works because the elements of x are only evaluated when they
+need to be.
+
 ...will not perform the expensive \verb'factorial' computation. This
 language feature becomes useful in writing clean code. As an example, if
 a program needs to generate an unkown amount of prime numbers, in an
@@ -265,6 +254,18 @@ production and consumption of data, making it easy to write clean code.
   -- A naive implementation of an infinite list of primes
   primes :: [Integer]
   primes = filter isPrime [2..]
+\end{verbatim}
+
+Laziness is a relatively broad term in programming langauges; languages like
+Haskell provide purely lazy semantics, while some like OCaml allow you to opt-in
+to laziness, and others like Perl 6 support laziness only in instances of
+certain data structures (like lists). Here, we will be looking at a fully lazily
+evaluated language, as in Haskell. This form of laziness can be incredibly
+useful for defining recursive datastructures; for instance, the definition of an
+infinite list in Haskell is simply as follows:
+
+\begin{verbatim}
+  x = 1 : x
 \end{verbatim}
 
 \paragraph{Bottom values}

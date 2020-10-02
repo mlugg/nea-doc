@@ -1,8 +1,14 @@
 \documentclass[9pt]{extarticle}
+
 \usepackage[a4paper, total={6in, 8in}]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{newunicodechar}
 \usepackage{tikz}
 \usepackage{verbatim}
 \usetikzlibrary{trees}
+
+\newunicodechar{⊥}{$\bot$}
+\DeclareUnicodeCharacter{22A5}{$\bot$}
 
 \title{NEA}
 \author{Matthew Lugg}
@@ -230,6 +236,86 @@ project (although I may revisit them if I have time).
 
 \subsubsection{Lazy evaluation}
 
+Lazy evaluation is a feature of some programming languages where an
+expression is not evaluated until its value is required. For instance,
+in the following function:
+
+\begin{verbatim}
+  const :: a -> b -> a
+  const x y = x
+\end{verbatim}
+
+The value of \verb'y' will never be evaluated when \verb'const' is
+called. This means a call like the following...
+
+\begin{verbatim}
+  const 10 (factorial 100000000)
+\end{verbatim}
+
+...will not perform the expensive \verb'factorial' computation. This
+language feature becomes useful in writing clean code. As an example, if
+a program needs to generate an unkown amount of prime numbers, in an
+imperative language you would have to write code which generated extra
+ones as they were required. However, in a lazy language, you can simply
+define an infinitely long list of prime numbers, and they will only be
+computed as they are requested. This allows you to easily separate
+production and consumption of data, making it easy to write clean code.
+
+\begin{verbatim}
+  -- A naive implementation of an infinite list of primes
+  primes :: [Integer]
+  primes = filter isPrime [2..]
+\end{verbatim}
+
+\paragraph{Bottom values}
+
+To understand the basis for lazy evalution, we first need to discuss bottom values.
+
+In any sufficiently expressive (Turing-complete) language, you can write
+non-total expressions: this means an expression that does not produce a
+value. Examples of this include throwing exceptions, looping infinitely,
+or recursing infinitely (by the undeciability of the Halting problem, it
+is impossible to eliminate such programs computationally). We want to be
+able to logically reason about these computations. As such, we say that
+these non-terminating or erroring computations are represented by a
+special value, ``bottom'', which we generally write as ⊥ or
+\verb'_|_'. This value is incredibly special, as it is the only value
+which inhabits all types (that is, ⊥ is a valid value of every
+type).
+
+\begin{verbatim}
+  f x = f (x + 1)  -- Calls to this function will never terminate
+  f 3 = ⊥   -- Therefore, we can semantically say it returns ⊥
+\end{verbatim}
+
+\paragraph{Strict semantics}
+
+Technically speaking, Haskell is not, by specification, a lazily
+evaluated language; instead, it is non-strict. Non-strict means that
+evaluation proceeds from the outside of an expression inwards, as
+opposed to the other way round. The practical meaning of this is to do
+with how bottom values propagate throughout expressions. In a strictly
+evaluated language - such as most imperative languages - a bottom value
+appearing in any subexpression will result in the entire expression
+evaluating to bottom; for instance, a function call \verb'f(1, x)' would
+neccesarily evalute to ⊥ if \verb'x' is ⊥. Non-strict
+languages, on the other hand, could have \verb'f' return a perfectly
+valid value. Strict languages often have a small amount of non-strict
+behaviour in the form of boolean short-circuiting: in languages like C,
+evaluating \verb'true || f(0)' will never call \verb'f', as it is not
+neccesary to know that the entire statement returns \verb'true'.
+Non-strict languages extend this to all aspects of the language's
+syntax.
+
+In practice, most, if not all, implementations of Haskell use laziness
+as the method for implementing non-strictness. With lazy evaluation,
+function application, rather than actually running code, creates a
+datastructure called a ``thunk'', which describes the function and its
+argument. Then, when this value is ``forced'' (its evaluation is
+required), the function is actually called to calculate the result.
+
+\paragraph{Evaluation}
+
 In order to understand the implementation of laziness, we must first define what
 ``evaluation'' of an expression means. To do this, we define three ``forms'' of
 expression; normal form (NF), head normal form (HNF), and weak head normal form
@@ -239,8 +325,7 @@ expression; normal form (NF), head normal form (HNF), and weak head normal form
 
   \item An expression in normal form is effectively fully evaluated. More
   specifically, an expression in NF is either a data constructor applied to
-  arguments all in NF, or a lambda abstraction whose body is also in normal
-  form. 
+  arguments all in NF, or a lambda abstraction whose body is also in NF.
 
   \item An expression in head normal form is either a data constructor applied to
   arguments (which may be in any form), or a lambda abstraction whose body is
@@ -252,23 +337,24 @@ expression; normal form (NF), head normal form (HNF), and weak head normal form
 
 \end{itemize}
 
-The most important of these ``forms'' is weak head normal form (WHNF). The way
-evaluation actually occurs in a lazy language is through pattern matching, which
-effectively allows you to deconstruct a type. For example, using the previously
-defined IntList: 
+The most important of these ``forms'' is weak head normal form (WHNF).
+The way evaluation actually normally occurs in a lazy language is
+through pattern matching, which effectively allows you to deconstruct a
+type. For example, using the previously defined \verb'IntList': 
 
 \begin{verbatim}
   sum = \x -> case x of { Cons x xs -> x + sum xs; Nil -> 0 } 
 \end{verbatim}
 
-This defines 'sum' as a lambda (anonymous function) of one argument x. This
-argument (which should be an IntList) is then deconstructed with a 'case'
-expression; this looks at the constructor of x, and runs a different piece of
-code depending on the constructor used. This case expression is the only way
-evaluation occurs in most lazy languages. For this, we evaluate the expression
-(which may be an unevaluated expression, known as a 'thunk') into weak head
-normal form. This guarantees that, as long as the value is of the correct type,
-the constructor in question will be evaluated, and can be matched against. 
+This defines 'sum' as a lambda (anonymous function) of one argument x.
+This argument (which should be an IntList) is then deconstructed with a
+\verb'case' expression; this looks at the constructor of x, and runs a
+different piece of code depending on the constructor used. This case
+expression is the only way evaluation occurs in most lazy languages. For
+this, we evaluate the expression (which may be an unevaluated
+expression, known as a 'thunk') into weak head normal form. This
+guarantees that, as long as the value is of the correct type, the
+constructor in question will be evaluated, and can be matched against. 
 
 \subsubsection{Garbage collection}
 

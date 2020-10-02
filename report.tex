@@ -9,6 +9,7 @@
 
 \newunicodechar{⊥}{$\bot$}
 \DeclareUnicodeCharacter{22A5}{$\bot$}
+\DeclareUnicodeCharacter{03BB}{$\lambda$}
 
 \title{NEA}
 \author{Matthew Lugg}
@@ -101,6 +102,8 @@ techniques like recursive descent. However, the speed is still acceptable, and
 their simplicity means that this is likely the technique I will use for parsing
 my language.
 
+\paragraph{Syntax inspiration}
+
 The syntax of purely functional programming languages tends to be relatively
 similar; they are mostly based off of either Haskell or Standard ML.
 Haskell-like syntax looks like this:
@@ -116,6 +119,41 @@ However, it uses indentation for parsing; this can be quite complicated to do.
 As such, for simplicity, I plan to change this syntax style slightly to allow
 parsing without indentation. On the downside, this will make the syntax slightly
 harder to read; however, it will simplify the parser greatly.
+
+\paragraph{Language syntax}
+
+My language's syntax will be approximately as follows:
+
+\begin{verbatim}
+  -- Line comments are started with two dashes
+
+  {-
+    Block comments are delimited like this
+    {- They can also be nested -}
+  -}
+
+  -- Type signatures and bindings. The semicolon indicates the end of a
+  -- top-level expression
+  foo :: Int;
+  foo = x;
+
+  -- The following is the expression syntax.
+
+  -- Function application (a function 'f' applied to a parameter 'x')
+  f x
+
+  -- Lambda abstractions (with a parameter 'x')
+  λx -> e
+  \x -> e
+
+  -- let-bindings use semicolon-separated bindings enclosed in braces.
+  -- The last binding may be terminated with an optional semicolon
+  let { x = e0; y = e1 } in e2
+
+  -- case expressions use semicolon-separated cases enclosed in braces.
+  -- The last case may be terminated with an optional semicolon
+  case { Cons x xs -> xs; Nil -> Nil }
+\end{verbatim}
 
 \subsubsection{Data types}
 

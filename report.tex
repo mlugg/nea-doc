@@ -166,12 +166,21 @@ recursively defined in Haskell as follows:
   data IntList = Cons Int IntList | Nil 
 \end{verbatim}
 
-This declaration specifies that an IntList either consists of the Cons
-constructor applied to an Int and another IntList (representing the rest of the
-list), or the Nil constructor applied to no arguments, which represents the
-empty list. This feature is shared by non-lazy languages like OCaml and Standard
-ML; it allows for a simple, intuitive, and safe representation of many data
-structures. 
+This declaration specifies that an \verb'IntList' either consists of the
+\verb'Cons' constructor applied to an \verb'Int' and another
+\verb'IntList' (representing the rest of the list), or the \verb'Nil'
+constructor applied to no arguments, which represents the empty list.
+These constructors can be thought of as functions that just store their
+arguments (and allow you to later extract them). This feature is shared
+by non-lazy languages like OCaml and Standard ML; it allows for a
+simple, intuitive, and safe representation of many data structures.
+
+These types can also be polymorphic. For instance, the above
+\verb'IntList' type can be generalised to any type as follows:
+
+\begin{verbatim}
+  data List a = Cons a (List a) | Nil
+\end{verbatim}
 
 \subsubsection{Type systems}
 

@@ -282,9 +282,6 @@ called. This means a call like the following...
   const 10 (factorial 100000000)
 \end{verbatim}
 
-This definition works because the elements of x are only evaluated when they
-need to be.
-
 ...will not perform the expensive \verb'factorial' computation. This
 language feature becomes useful in writing clean code. As an example, if
 a program needs to generate an unkown amount of prime numbers, in an
@@ -312,9 +309,13 @@ infinite list in Haskell is simply as follows:
   x = 1 : x
 \end{verbatim}
 
+This definition works because the elements of x are only evaluated when they
+need to be.
+
 \paragraph{Bottom values}
 
-To understand the basis for lazy evalution, we first need to discuss bottom values.
+To understand the basis for lazy evalution, we first need to discuss
+bottom values.
 
 In any sufficiently expressive (Turing-complete) language, you can write
 non-total expressions: this means an expression that does not produce a
@@ -489,6 +490,101 @@ optionally use a more complex hybrid approach with mark-and-sweep which
 can be more suitable for latency-sensitive programs. I will likely
 implement a simple moving generational garbage collector, as it provides
 a nice balance between efficiency and simplicity of implementation.
+
+\subsection{Intermediate representations}
+
+Compiling a high-level language like this to assembly is a complex task.
+For this reason, compilers do not typically translate source directly;
+instead, they move through one or more ``intermediate representations''
+(IRs), each lower-level than the last. These are datastructures very
+similar to an AST, with the difference that they do not correspond to
+any literal source language. GHC uses three IRs: Core, STG and Cmm.
+
+Core is GHC's first IR, and its most well-known. It is an incredibly
+simple functional IR; similar to Haskell itself but much smaller.
+Expressions in Core are defined as an ADT with the following 10
+constructors:
+
+\begin{verbatim}
+  data Expr b    -- "b" for the type of binders
+    = Var   Id
+    | Lit   Literal
+    | App   (Expr b) (Arg b)
+    | Lam   b (Expr b)
+    | Let   (Bind b) (Expr b)
+    | Case  (Expr b) b Type [Alt b]
+    | Cast  (Expr b) Coercion
+    | Tick  (Tickish Id) (Expr b)
+    | Type  Type
+    | Coercion Coercion
+\end{verbatim}
+
+However, several parts of this type are not relevant - \verb'Tick'
+relates to debugging information, and \verb'Coercion', \verb'Type' and
+\verb'Cast' are concerned with more complex features of GHC like
+functional dependencies and type families. A simplified version of Core
+is as follows:
+
+\begin{verbatim}
+  data Expr b    -- "b" for the type of binders
+    = Var   Id
+    | Lit   Literal
+    | App   (Expr b) (Expr b)
+    | Lam   b (Expr b)
+    | Let   (Bind b) (Expr b)
+    | Case  (Expr b) b Type [Alt b]
+\end{verbatim}
+
+This tells us that a Core expression is either a variable, a literal, a
+function applied to an argument, a lambda abstraction, a set of let
+bindings, or a case expression. Notice that these expressions are
+parameterized over a type \verb'b', describing bound variables. This is
+used to add extra type information to the IR. The IR does not strictly
+need much type information, as type checking in GHC occurs on the
+original source language. However, some type information is important
+later in compilation, and preserving it can make it easier to find and
+fix compiler bugs when they arise.
+
+I will likely use a Core-like IR in compilation of my language. This is
+because it allows you to remove any syntactic sugar in the language, and
+generally simplify the representation, before proceeding with
+compilation. There will be two main differences between my IR and my
+source language.
+
+The first is in let bindings. Before type checking, let bindings are
+split into ``binding groups''; groups of mutually recursive bindings.
+TODO why are they in core?
+
+The second is in case expressions. In the source language, pattern
+matches may be nested arbitrarily:
+
+\begin{verbatim}
+  case xs of
+    { Cons p (Cons q (Cons r Nil)) -> e0
+    ; _ -> e1 } -- default case
+\end{verbatim}
+
+However, this cannot be directly compiled. Instead, the cases must be
+flattened into matching single constructors:
+
+\begin{verbatim}
+  case xs of
+    { Cons p tmp0 ->
+      case tmp0 of
+        { Cons q tmp1 ->
+          case tmp1 of
+            { Cons r tmp2 ->
+              case tmp2 of
+                { Nil -> e0
+                ; _   -> e1 }
+            ; _ -> e1 }
+        ; _ -> e1 }
+    ; _ -> e1 }
+\end{verbatim}
+
+For simplicity, my IR will require a default case in every pattern
+match. If not provided, this will be automatically generated as an
+expression that throws an error.
 
 \subsection{Objectives}
 

@@ -490,7 +490,7 @@ can be more suitable for latency-sensitive programs. I will likely
 implement a simple moving generational garbage collector, as it provides
 a nice balance between efficiency and simplicity of implementation.
 
-\subsection{Intermediate representations}
+\subsubsection{Intermediate representations}
 
 Compiling a high-level language like this to assembly is a complex task.
 For this reason, compilers do not typically translate source directly;
@@ -519,10 +519,10 @@ constructors:
 \end{verbatim}
 
 However, several parts of this type are not relevant - \verb'Tick'
-relates to debugging information, and \verb'Coercion', \verb'Type' and
-\verb'Cast' are concerned with more complex features of GHC like
-functional dependencies and type families. A simplified version of Core
-is as follows:
+relates to debugging information, and \verb'Coercion' and \verb'Cast'
+are concerned with more complex features of GHC like functional
+dependencies and type families. A simplified version of Core is as
+follows:
 
 \begin{verbatim}
   data Expr b    -- "b" for the type of binders
@@ -532,17 +532,21 @@ is as follows:
     | Lam   b (Expr b)
     | Let   (Bind b) (Expr b)
     | Case  (Expr b) b Type [Alt b]
+    | Type  Type
 \end{verbatim}
 
 This tells us that a Core expression is either a variable, a literal, a
 function applied to an argument, a lambda abstraction, a set of let
-bindings, or a case expression. Notice that these expressions are
-parameterized over a type \verb'b', describing bound variables. This is
-used to add extra type information to the IR. The IR does not strictly
-need much type information, as type checking in GHC occurs on the
-original source language. However, some type information is important
-later in compilation, and preserving it can make it easier to find and
-fix compiler bugs when they arise.
+bindings, a case expression, or a type. Types being in this IR seems
+strange at first; the reason for this difference is that Core uses the
+notion of type lambdas to represent polymorphism. A simple function like
+\verb'id :: a -> a' is, in Core, represented as
+\verb'id = \(@ t) -> \(x :: t) -> x', where the first parameter is the
+type and the second is a value of that type. This facility is not
+neccesary for HM-like type systems; it is only present in Core as this
+language describes a variant of System F.  Also notice that Core
+expressions are parameterized over a type \verb'b', describing bound
+variables. This is used to add extra metadata to the IR.
 
 I will likely use a Core-like IR in compilation of my language. This is
 because it allows you to remove any syntactic sugar in the language, and
@@ -550,9 +554,10 @@ generally simplify the representation, before proceeding with
 compilation. There will be two main differences between my IR and my
 source language.
 
-The first is in let bindings. Before type checking, let bindings are
-split into ``binding groups''; groups of mutually recursive bindings.
-TODO why are they in core?
+The first is in let bindings. Before or during type checking, let
+bindings are split into ``binding groups''; groups of mutually recursive
+bindings. Keeping this separation makes the IR slightly simpler to
+compile later on.
 
 The second is in case expressions. In the source language, pattern
 matches may be nested arbitrarily:

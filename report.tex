@@ -391,15 +391,15 @@ type. For example, using the previously defined \verb'IntList':
   sum = \x -> case x of { Cons x xs -> x + sum xs; Nil -> 0 } 
 \end{verbatim}
 
-This defines 'sum' as a lambda (anonymous function) of one argument x.
-This argument (which should be an IntList) is then deconstructed with a
-\verb'case' expression; this looks at the constructor of x, and runs a
-different piece of code depending on the constructor used. This case
-expression is the only way evaluation occurs in most lazy languages. For
-this, we evaluate the expression (which may be an unevaluated
-expression, known as a 'thunk') into weak head normal form. This
-guarantees that, as long as the value is of the correct type, the
-constructor in question will be evaluated, and can be matched against. 
+This defines 'sum' as a lambda (anonymous function) of one argument
+\verb'x'.  This argument (which should be an \verb'IntList') is then
+deconstructed with a \verb'case' expression; this looks at the
+constructor of x, and runs a different piece of code depending on the
+constructor used. This case expression is the only way evaluation occurs
+in most lazy languages. For this, we evaluate the expression (which may
+be a thunk) into weak head normal form. This guarantees that, as long as
+the value is of the correct type, the constructor in question will be
+evaluated, and can be matched against.
 
 \subsubsection{Garbage collection}
 

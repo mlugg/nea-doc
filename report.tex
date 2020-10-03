@@ -320,14 +320,13 @@ bottom values.
 In any sufficiently expressive (Turing-complete) language, you can write
 non-total expressions: this means an expression that does not produce a
 value. Examples of this include throwing exceptions, looping infinitely,
-or recursing infinitely (by the undeciability of the Halting problem, it
-is impossible to eliminate such programs computationally). We want to be
-able to logically reason about these computations. As such, we say that
-these non-terminating or erroring computations are represented by a
-special value, ``bottom'', which we generally write as ⊥ or
-\verb'_|_'. This value is incredibly special, as it is the only value
-which inhabits all types (that is, ⊥ is a valid value of every
-type).
+or recursing infinitely (by the undecidability of the Halting problem,
+it is impossible to eliminate such programs computationally). We want to
+be able to logically reason about these computations. As such, we say
+that these non-terminating or erroring computations are represented by a
+special value, ``bottom'', which we generally write as ⊥ or \verb'_|_'.
+This value is incredibly special, as it is the only value which inhabits
+all types (that is, ⊥ is a valid value of every type).
 
 \begin{verbatim}
   f x = f (x + 1)  -- Calls to this function will never terminate

@@ -48,13 +48,13 @@ semantics, so for all intents and purposes, Haskell can be considered a lazy
 language. The most popular implementation is GHC, the Glasgow Haskell Compiler;
 this compiler generates incredibly fast output assembly (often comparable in
 speed to programs written in low-level languages like C) and supports over 100
-language extensions for features such as GADTs and functional dependencies. 
+language extensions for features such as GADTs and functional dependencies.
 
 There exist several other major purely functional languages, some of which
 feature laziness. A prominent example is OCaml; however, this language differs
 from Haskell in that it is eagerly evaluated by default and has opt-in lazy
 semantics. Haskell is somewhat unique; as such, it may prove to be a major
-source of inspiration for this project as the most similar existing solution. 
+source of inspiration for this project as the most similar existing solution.
 
 GHC's dialect of Haskell contains various sophisticated features with varying
 levels of usage. Haskell, since its inception, contains typeclasses as a major
@@ -62,7 +62,7 @@ feature; these aid in the creation of polymorphic functions for things like
 sorting. This is one of Haskell's most well-known and commonly-used features,
 and as such, I would like to support this in my implementation; however, time
 constraints will likely make this infeasible, as type inference and checking of
-typeclasses is a relatively complex feature. 
+typeclasses is a relatively complex feature.
 
 \subsection{Technical overview}
 
@@ -160,10 +160,10 @@ My language's syntax will be approximately as follows:
 A more simple feature of Haskell is algebraic data types (ADTs). These are
 datastructures which have multiple constructors, each containing some number of
 values; for instance, a data type describing a list of integers could be
-recursively defined in Haskell as follows: 
+recursively defined in Haskell as follows:
 
 \begin{verbatim}
-  data IntList = Cons Int IntList | Nil 
+  data IntList = Cons Int IntList | Nil
 \end{verbatim}
 
 This declaration specifies that an \verb'IntList' either consists of the
@@ -364,7 +364,7 @@ required), the function is actually called to calculate the result.
 In order to understand the implementation of laziness, we must first define what
 ``evaluation'' of an expression means. To do this, we define three ``forms'' of
 expression; normal form (NF), head normal form (HNF), and weak head normal form
-(WHNF). 
+(WHNF).
 
 \begin{itemize}
 
@@ -374,21 +374,21 @@ expression; normal form (NF), head normal form (HNF), and weak head normal form
 
   \item An expression in head normal form is either a data constructor applied to
   arguments (which may be in any form), or a lambda abstraction whose body is
-  in head normal form. 
+  in head normal form.
 
   \item An expression in WHNF is either a data constructor applied to arguments
   (which may be in any form), or a lambda abstraction (whose body may be in
-  any form). 
+  any form).
 
 \end{itemize}
 
 The most important of these ``forms'' is weak head normal form (WHNF).
 The way evaluation actually normally occurs in a lazy language is
 through pattern matching, which effectively allows you to deconstruct a
-type. For example, using the previously defined \verb'IntList': 
+type. For example, using the previously defined \verb'IntList':
 
 \begin{verbatim}
-  sum = \x -> case x of { Cons x xs -> x + sum xs; Nil -> 0 } 
+  sum = \x -> case x of { Cons x xs -> x + sum xs; Nil -> 0 }
 \end{verbatim}
 
 This defines 'sum' as a lambda (anonymous function) of one argument

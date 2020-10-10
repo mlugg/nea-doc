@@ -608,4 +608,42 @@ as an expression that throws an error.
 
 \end{itemize}
 
+\section{Design}
+
+\subsection{High-level overview}
+
+The compiler pipeline will have approximately the following stages:
+
+\begin{itemize}
+  \item CLI argument parsing: parse all the arguments given to the
+    compiler, and set its state as specified.
+
+  \item Code parsing: for each input file, parse the file's
+    declarations into an AST, reporting errors if parsing fails.
+
+  \item Type checking: Run the Algorithm W based type checker over each
+    binding, reporting any type errors that occur.
+
+  \item IR generation: Convert the AST to a simplified intermediate
+    representation, flattening let bindings and performing other
+    simplification steps.
+
+  \item Code generation: Convert the IR into AMD64 assembly source.
+
+  \item Assembly: Assemble the asm code into object files.
+
+  \item Linking: Link all the compiled object files together alongside
+    the runtime code.
+\end{itemize}
+
+Most of this functionality will be implemented in the compiler itself,
+with two exceptions. Firstly, converting AMD64 assembly to machine code
+is a complex process due to the highly complex and backwards-compatible
+instruction encoding; therefore, I will use external utilities - likely
+the \verb'nasm' assembler - to perform this stage. Secondly, linking
+objects together is out of scope for this project, requiring in-depth
+knowledge of the object format (ELF64 on Linux or PE on Windows) and
+more. Therefore, I will also use external tools for this by calling into
+the system linker \verb'ld'.
+
 \end{document}

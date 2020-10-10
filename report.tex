@@ -655,4 +655,56 @@ routines that turn out to be neccesary in compiled code. This will be
 stored in either an object file or a static library file, and
 automatically linked against the generated objects by the compiler.
 
+\subsection{In-memory object representation}
+
+An important consideration for a compiled language is how objects will
+be represented in-memory at runtime. One of the advantages of static
+type checking is that unlike languages like Python, all type information
+can be erased at runtime; this slightly decreases memory usage, and
+speeds up the code as types do not have to be checked during execution.
+
+An object (closure) can be modelled as a header, followed by some number
+of 1-word (8-byte) values, some of which are pointers. The header
+contains three main things. The first is a number describing the type of
+the object. This does not refer to the type in the context of the source
+language, but rather whether the object represents a thunk, a data
+constructor, or a function. The second thing the header contains is a
+record of how many pointers and non-pointers are in the object; this is
+so that the garbage collector can correctly follow and identify
+references and move objects. Lastly, the header contains a pointer to
+the object's ``entry code''. The meaning of this differs depending on
+the type of the object. For thunks, this entry code is the code that
+will evaluate the thunk to weak head normal form. For functions, the
+entry code is the code that will run the function. For constructors,
+this code does not have a clear interpretation; omitting it is
+technically possible, and would save a small amount of memory, however
+complicates the object structure. Therefore, I will keep the field
+present; it will simply contain some meaningless value, like a null
+pointer. The values in the object's main body vary depending on the type
+of closure it is:
+
+\begin{itemize}
+  \item For thunks, the body simply contains two pointers: a pointer to
+    the function object to be called, and a pointer to the object which
+    is its argument.
+
+  \item For ADT instances, the body contains a non-pointer encoding
+    which constructor was used, and some number of pointers referencing
+    the ADT's parameters.
+
+  \item For primitive data types (e.g. \verb'Nat'), the body simply
+    contains a non-pointer encoding the value. These primitives can be
+    thought of as ADTs with a very large number of constructors and no
+    extra parameters.
+
+  \item For functions, the body contains some number (possibly zero) of
+    pointers to values referenced by the function's closure.
+\end{itemize}
+
+There are a few interesting details here. For example, thunks which will
+evaluate to a data constructor need to be sufficiently sized to hold the
+largest possible constructor of that type so that evaluation of the
+thunk does not clobber other values on the heap. However, for the most
+part, the object representation is relatively simple.
+
 \end{document}

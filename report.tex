@@ -646,4 +646,13 @@ knowledge of the object format (ELF64 on Linux or PE on Windows) and
 more. Therefore, I will also use external tools for this by calling into
 the system linker \verb'ld'.
 
+\subsection{Runtime}
+
+I have previously mentioned the language's runtime. This will be a piece
+of code written in C (and potentially some assembly) which contains its
+initialization code and garbage collector, as well as any other common
+routines that turn out to be neccesary in compiled code. This will be
+stored in either an object file or a static library file, and
+automatically linked against the generated objects by the compiler.
+
 \end{document}

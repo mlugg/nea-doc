@@ -646,6 +646,78 @@ knowledge of the object format (ELF64 on Linux or PE on Windows) and
 more. Therefore, I will also use external tools for this by calling into
 the system linker \verb'ld'.
 
+\subsection{Algorithm W}
+
+Algorithm W is a relatively simple algorithm for Hindley-Milner type
+inference/checking. It was the original algorithm used for
+Hindley-Milner type inference - described by Milner in 1978 - and has
+stood the test of time as being relatively easy to implement whilst also
+efficient enough for reasonable use.
+
+An implementation of the HM type system has three important data types:
+\verb'Type', \verb'TypeScheme' and \verb'Kind'. Types are the types
+we're familiar with; they contain some type names, possibly with
+application for polymorphic types like \verb'List'. However, this raises
+an important point: we need to disallow objects with types like
+\verb'List', as these are type constructors, not inhabited types. The
+logic to this system is described by the ``kind'' of a type. Kinds are
+effectively types of types; the kind \verb'*', or \verb'Star', is the
+kind of an inhabited type (one that can have values, e.g. \verb'Int' and
+\verb'List String'), and kinds can also be made with an arrow - i.e.
+\verb'a -> b' is the kind of a type which takes a type argument of kind
+\verb'a' and gives back a type of kind \verb'b'. The ability of a type
+to have kinds other than \verb'Star' is referred to as ``higher-kinded
+types''; this is an important feature of most functional languages.
+Lastly, a type scheme is a description of a polymorphic type; it is a
+type alongside a list for universally quantified (i.e. polymorphic) type
+variables. These data types are defined in Haskell as follows:
+
+\begin{verbatim}
+
+  data Type
+    = TConc Text   -- Conc meaning 'concrete' - i.e. a specific type
+    | TVar Integer
+    | TApp Type Type
+
+  data TypeScheme
+    = TypeScheme (Set Integer) Type
+
+  data Kind
+    = KStar
+    | KArrow Kind Kind
+
+\end{verbatim}
+
+My definition of \verb'Type' will be slightly different to this. As I
+want to support user-supplied type signatures with arbitrary names for
+polymorphic variables, I plan to make \verb'TVar' store a \verb'Text',
+and add another constructor \verb'TUnif' for unification variables (the
+formal name for type variables used during type checking / inference):
+
+\begin{verbatim}
+
+  data Type
+    = TConc Text
+    | TVar Text
+    | TUnif Integer
+    | TApp Type Type
+
+\end{verbatim}
+
+Note that as a function type \verb'a -> b' is merely syntactic sugar for
+\verb'(->) a b', functions \verb'a -> b' are represented as
+\verb'TApp (TApp (TConc "->") a) b'.
+
+Algorithm W works by generating unification variables to stand for
+unknown types, and, as values are used in contexts that limit their
+type, generating a ``substitution'' - via a process called
+``unification'' - which describes more specific ways of representing a
+unification variable. It can be described using a set of type rules.
+
+\subsubsection{Typing rules}
+
+TODO
+
 \subsection{Runtime}
 
 I have previously mentioned the language's runtime. This will be a piece

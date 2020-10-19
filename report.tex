@@ -646,6 +646,73 @@ knowledge of the object format (ELF64 on Linux or PE on Windows) and
 more. Therefore, I will also use external tools for this by calling into
 the system linker \verb'ld'.
 
+\subsection{CLI}
+
+As with most compilers, my program will use a command-line interface.
+The interface will take a series of flags followed by the names of the
+files to compile; the specific usage will be defined by the following
+manual page.
+
+\begin{verbatim}
+
+SYNOPSIS
+  qntc [-S|-c] [-v] [-static|-shared] [-On] [-o outfile] infile...
+
+DESCRIPTION
+  qntc reads the quanta source files specified by 'infile' and compiles them
+  into a binary specified by 'outfile'.
+
+  By default, qntc will compile the files specified on the command-line by
+  'infile' to an executable. This executable will be named as specified by
+  'outfile' or, if 'outfile' is not specified, a default name based on the
+  platform ('a.out' on Linux; 'out.exe' on Windows).
+
+  Flags '-S' and '-c' change the type of file the compiler outputs.  Normally,
+  the compiler performs compilation, assembly, and linking; however, if given
+  '-S', the compiler will not assemble, and if given '-c', the compiler will
+  assemble each file, but will not link them together.
+
+  qntc uses 'nasm' and 'ld' internally for compiling asm to object files and
+  linking object files into binaries. If 'nasm' is not in PATH, and '-S' is not
+  given, qntc will return an error. If 'ld' is not in PATH, and neither '-S' nor
+  '-c' is given, qntc will return an error.
+
+OPTIONS
+  -S          Compile, but do not assemble; output asm files. The created files
+              will be in amd64 NASM syntax. If 'outfile' is not specified and
+              there are multiple input files, the output filenames are the input
+              filenames with '.asm' concatenated on the end. If 'outfile' is
+              specified and there are multiple input files, the output filenames
+              are the input filenames with '.outfile' concatenated on the end.
+              If 'outfile' is not specified and there is a single input file,
+              the output file is 'out.asm'. If 'outfile' is specified and there
+              is a single output file, the output filename is 'outfile'.
+
+  -c          Compile and assemble, but do not link; output object files. This
+              is subject to the same naming rules as '-S', except the '.o' file
+              extension is used in place of '.asm'.
+
+  -v          Enables verbose mode. In this mode, the compiler will output
+              timestamped information about every stage of compilation. This
+              exists primarily for compiler debugging, but may be useful
+              elsewhere.
+
+  -static     (default) Enables the use of static linkage for the produced
+              binary. This has no effect if '-S' or '-c' is given.
+
+  -shared     Enables the use of shared (dynamic) linkage for the produced
+              binary. This has no effect if '-S' or '-c' is given.
+
+  -On         Set the optimisation level to 'n'. 'n' may be any integer from 0
+              to 9 inclusive; it specifies how aggressively optimisations should
+              be performed, where 0 means "perform no optimisations" and 9 means
+              "perform all optimisations". Note that higher optimisation levels
+              are not guaranteed to have any effect.
+
+  -o outfile  Set the output filename.
+
+\end{verbatim}
+
 \subsection{Algorithm W}
 
 Algorithm W is a relatively simple algorithm for Hindley-Milner type

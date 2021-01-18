@@ -1021,14 +1021,48 @@ annotate source positions by, for instance, replacing an \verb'Expr'
 with a \verb'Located Expr'. Because prefixing \verb'Located' can
 sometimes be repetitive, I adopted the convention of defining type
 aliases prefixed with an L to represent a located variant of a type; for
-instance, \verb'LExpr Typechecked' is equivalent to \verb'Located (Expr
-Typechecked)'.
+instance, \verb'LExpr Typechecked' is equivalent to
+\verb'Located (Expr Typechecked)'.
 
 With this and some similar type families defined, I next defined the AST
 itself. The surface syntax of Quanta is relatively complex; as such,
 this file contains a relatively large collection of mutually recursive
 datatypes. The most important of these is the \verb'QntExpr' type,
-describing the syntax of an expression.
+describing the syntax of an expression. It is defined as follows:
 
+\begin{verbatim}
+data QntExpr p
+  = QntVar (Id p)
+  | QntNatLit Natural
+  | QntApp (LQntExpr p) (LQntExpr p)
+  | QntLam (Binder p) (LQntExpr p)
+  | QntLet [QntBind p] (LQntExpr p)
+  | QntCase (LQntExpr p) [LQntAlt p]
+\end{verbatim}
+
+This type encodes every form of expression in the language:
+\begin{itemize}
+	\item A variable reference (i.e. a name)
+	\item A numeric literal
+	\item An application of two expressions
+	\item A lambda abstraction, containing a variable binder and a body expression
+	\item A let expression, containing a list of binds and a body expression
+	\item A case expression, containing an expression (the scrutineee) and a list of alternatives
+\end{itemize}
+
+This expression type uses the following ``utility'' types:
+
+\begin{verbatim}
+data QntBind p
+  = QntImpl (Binder p) (LQntExpr p)
+  | QntExpl (Binder p) (LQntExpr p) (LScheme (TyId p))
+
+data QntPat p
+  = QntNamePat (Binder p)
+  | QntNatLitPat Natural
+  | QntConstrPat (Constr p) [QntPat p]
+
+data QntAlt p = QntAlt (QntPat p) (LQntExpr p)
+\end{verbatim}
 
 \end{document}

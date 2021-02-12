@@ -1065,4 +1065,39 @@ data QntPat p
 data QntAlt p = QntAlt (QntPat p) (LQntExpr p)
 \end{verbatim}
 
+These types describe let-bindings - either implicitly or explicitly
+typed (i.e. with or without a type signature) - as well as patterns and
+case alteratives (simply a pair of a pattern and an expression).
+
+\subsection{Parsing}
+
+The first stage of compilation, and the first piece of code I chose to
+wrote, is the parser. This code takes a source file and converts it into
+an AST ready for processing.
+
+For the task of parsing, I chose to use the popular Megaparsec library.
+This is a sophisticated parser combinator library for Haskell which is
+relatively fast and results in good error messages and clear parser
+code.
+
+Firstly, some ``combinators'' had to be defined to make certain
+operations simpler. Due to the common appearance of \verb'Located' types
+in my AST, I wrote a combinator named \verb'located' which takes as
+input a parser for some type \verb'a' and returns a parser for a
+\verb'Located a'.
+
+\begin{verbatim}
+located :: Parser a -> Parser (Located a)
+located m = do
+  start <- getSourcePos
+  x <- m
+  end <- getSourcePos
+  pure $ L (SrcSpan start end) x
+\end{verbatim}
+
+This combinator (effectively a higher-order function, as \verb'Parser'
+is a type wrapping a complex function type) simply works by getting the
+source position before and after running the given parser, and
+constructing a \verb'SrcSpan' based on these source positions.
+
 \end{document}

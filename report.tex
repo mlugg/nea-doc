@@ -6,12 +6,19 @@
 \usepackage{tikz}
 \usepackage{verbatim}
 \usetikzlibrary{trees}
+\usetikzlibrary{shapes.geometric, arrows}
+
+\tikzstyle{startstop} = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm, align=center, draw=black]
+\tikzstyle{io} = [trapezium, trapezium left angle=70, trapezium right angle=110, minimum width=3cm, minimum height=1cm, align=center, draw=black]
+\tikzstyle{process} = [rectangle, minimum width=3cm, minimum height=1cm, align=center, draw=black]
+\tikzstyle{decision} = [diamond, minimum width=3cm, minimum height=1cm, align=center, draw=black]
+\tikzstyle{arrow} = [thick,->,>=stealth]
 
 \newunicodechar{⊥}{$\bot$}
 \DeclareUnicodeCharacter{22A5}{$\bot$}
 \DeclareUnicodeCharacter{03BB}{$\lambda$}
 
-\title{NEA}
+\title{Computer Science NEA: Quanta, a small, lazy, purely functional programming language}
 \author{Matthew Lugg}
 
 \begin{document}
@@ -26,13 +33,14 @@
 
 \section{Introduction}
 
-Lazy evaluation is a computation model whereby all computations are deferred
-until their results are required; this contrasts with eager evaluation, as used
-by most conventional imperative languages. Lazy evaluation goes hand-in-hand
-with functional programming, a programming paradigm based on Church's lambda
-calculus rather than Turing machines. My goal is to write, in Haskell, a simple
-compiler for a lazy, purely functional, strongly typed programming language
-using the Hindley-Milner type system to amd64 assembly, which will allow for
+Lazy evaluation is a computation model whereby all computations are
+deferred until their results are required; this contrasts with eager
+evaluation, as used by most conventional imperative languages. Lazy
+evaluation goes hand-in-hand with functional programming, a programming
+paradigm based on Church's lambda calculus rather than Turing machines.
+My goal is to write, in Haskell, a simple compiler (named tqc) for a
+lazy, purely functional, strongly typed programming language using the
+Hindley-Milner type system to amd64 assembly, which will allow for
 simple Haskell-like programs to be written and compiled for modern CPUs.
 
 \section{Analysis}
@@ -404,8 +412,8 @@ evaluated, and can be matched against.
 \subsubsection{Garbage collection}
 
 Like most high-level languages, this language will have automatic memory
-management. Therefore, I will have to implement a garbage collector
-(GC). There are several common types of garbage collector.
+management. Therefore, I will have to use a garbage collector (GC).
+There are several common types of garbage collector.
 
 \paragraph{Reference counting}
 
@@ -486,9 +494,10 @@ object in an older generation. This makes identifying referenced objects
 faster and more efficient. As such, GHC generally employs a generational
 approach to garbage collection. Recently, it has been updated to also
 optionally use a more complex hybrid approach with mark-and-sweep which
-can be more suitable for latency-sensitive programs. I will likely
-implement a simple moving generational garbage collector, as it provides
-a nice balance between efficiency and simplicity of implementation.
+can be more suitable for latency-sensitive programs. This would likely
+be the most effective form of garbage collector to use in my language.
+However, generational GCs can be quite complex; as such, I will likely
+instead use a simple mark-and-sweep collector.
 
 \subsubsection{Intermediate representations}
 
@@ -544,7 +553,8 @@ notion of type lambdas to represent polymorphism. A simple function like
 \verb'id = \(@ t) -> \(x :: t) -> x', where the first parameter is the
 type and the second is a value of that type. This facility is not
 neccesary for HM-like type systems; it is only present in Core as this
-language describes a variant of System F.  Also notice that Core
+language describes a variant of System F, a more complicated type system
+supporting features like higher-rank polymorhpism. Also notice that Core
 expressions are parameterized over a type \verb'b', describing bound
 variables. This is used to add extra metadata to the IR.
 
@@ -554,13 +564,15 @@ generally simplify the representation, before proceeding with
 compilation. There will be two main differences between my IR and my
 source language.
 
-The first is in let bindings. Before or during type checking, let
-bindings are split into ``binding groups''; groups of mutually recursive
-bindings. Keeping this separation makes the IR slightly simpler to
-compile later on.
+Perhaps the most important difference will be that the intermediate
+representation will not be typed. Type checking occurs on the original
+AST, and once complete, does not need to be retained, as the code is
+known to be type-safe. In fact, keeping this information will
+potentially complicate the compiler, and increase compilation time and
+memory usage. As such, this type information will be removed.
 
-The second is in case expressions. In the source language, pattern
-matches may be nested arbitrarily:
+The other difference is in case expressions. In the source language,
+pattern matches may be nested arbitrarily:
 
 \begin{verbatim}
   case xs of
@@ -593,20 +605,58 @@ as an expression that throws an error.
 \subsection{Objectives}
 
 \begin{itemize}
+  \item Take a series of arguments on the command line and configure the compiler to perform the corresponding action
 
-  \item Create a parser for a Haskell-like functional programming syntax into an AST
+  \item Parse a Haskell-like functional programming syntax into an AST
 
-  \item Implement inference and checking for the Hindley-Milner type system with ADTs
-  using Algorithm W
+  \item Support the definition of algebraic data types (ADTs) in this language
 
-  \item Convert this AST into a simpler, untyped IR language
+  \item Perform full lazy evaluation in this language
 
-  \item Convert this IR into AMD64 assembly (which supports lazy evaluation with
-    thunks), using a low-level runtime written in C
+  \item Implement type inference for the Hindley-Milner type system using Algorithm W
 
-  \item Implement a garbage collector to prevent memory leaks in written code
+  \item Convert the AST into a simpler, untyped IR language
+
+  \item Convert this IR into AMD64 assembly
+  
+  \item Programatically convert this assembly code into an object file using an assembler
+
+  \item Write a runtime system in AMD64 assembly which provides helper functions necessary for e.g. evaluation of objects
+
+  \item After compiling object files, link them all together alongside the runtime to create a final executable
 
 \end{itemize}
+
+\begin{tikzpicture}[node distance=2cm]
+  \node (start) [startstop] {Start};
+  \node (argsin) [io, below of=start] {Read arguments};
+  \node (filesremaining) [decision, below of=argsin, yshift=-1cm] {Are there files\\remaining to\\be processed?};
+  \node (readsrcfile) [io, right of=filesremaining, xshift=3cm] {Read input file};
+  \node (parse) [process, below of=readsrcfile] {Parse source};
+  \node (typecheck) [process, below of=parse] {Typecheck AST};
+  \node (toir) [process, below of=typecheck] {Convert AST to IR};
+  \node (toasm) [process, below of=toir] {Generate assemly};
+  \node (buildingobjs) [decision, below of=toasm, yshift=-1cm] {Are we building\\object files?};
+  \node (assemble) [process, below of=buildingobjs, yshift=-1cm] {Assemble object};
+  \node (linkingbinary) [decision, below of=filesremaining, xshift=-3cm, yshift=-7cm] {Are we linking\\a final binary?};
+  \node (link) [process, below of=linkingbinary,yshift=-0.5cm, xshift=-3cm] {Link binary};
+  \node (end) [startstop, below of=link, xshift=3cm] {End};
+  \draw [arrow] (start) -- (argsin);
+  \draw [arrow] (argsin) -- (filesremaining);
+  \draw [arrow] (filesremaining) -- node[anchor=south] {yes} (readsrcfile);
+  \draw [arrow] (readsrcfile) -- (parse);
+  \draw [arrow] (parse) -- (typecheck);
+  \draw [arrow] (typecheck) -- (toir);
+  \draw [arrow] (toir) -- (toasm);
+  \draw [arrow] (toasm) -- (buildingobjs);
+  \draw [arrow] (buildingobjs) -- node[anchor=west] {yes} (assemble);
+  \draw [arrow] (buildingobjs) -| node[anchor=south, xshift=3cm] {no} (filesremaining);
+  \draw [arrow] (assemble) -| (filesremaining);
+  \draw [arrow] (filesremaining) -| node[anchor=south] {no} (linkingbinary);
+  \draw [arrow] (linkingbinary) -- node[anchor=west] {no} (end);
+  \draw [arrow] (linkingbinary) -| node[anchor=south] {yes} (link);
+  \draw [arrow] (link) |- (end);
+\end{tikzpicture}
 
 \section{Design}
 
@@ -618,8 +668,8 @@ The compiler pipeline will have approximately the following stages:
   \item CLI argument parsing: parse all the arguments given to the
     compiler, and set its state as specified.
 
-  \item Code parsing: for each input file, parse the file's
-    declarations into an AST, reporting errors if parsing fails.
+  \item Parsing: for each input file, parse the file's declarations into
+    an AST, reporting errors if parsing fails.
 
   \item Type checking: Run the Algorithm W based type checker over each
     binding, reporting any type errors that occur.
@@ -644,25 +694,30 @@ the \verb'nasm' assembler - to perform this stage. Secondly, linking
 objects together is out of scope for this project, requiring in-depth
 knowledge of the object format (ELF64 on Linux or PE on Windows) and
 more. Therefore, I will also use external tools for this by calling into
-the system linker \verb'ld'.
+the system linker \verb'ld'. My implementation will currently target
+Linux, but should be easy to extend to other operating systems such as
+Windows.
 
 \subsection{CLI}
 
 As with most compilers, my program will use a command-line interface.
 The interface will take a series of flags followed by the names of the
 files to compile; the specific usage will be defined by the following
-manual page.
+manual page (formatted as a standard Unix-style manpage).
 
 \begin{verbatim}
 
+NAME
+  tqc - the Tiny Quanta Compiler
+
 SYNOPSIS
-  qntc [-S|-c] [-v] [-static|-shared] [-On] [-o outfile] infile...
+  tqc [-S|-c] [-static|-shared] [-O[n]] [-o outfile] infile...
 
 DESCRIPTION
-  qntc reads the quanta source files specified by 'infile' and compiles them
+  tqc reads the Quanta source files specified by 'infile' and compiles them
   into a binary specified by 'outfile'.
 
-  By default, qntc will compile the files specified on the command-line by
+  By default, tqc will compile the files specified on the command-line by
   'infile' to an executable. This executable will be named as specified by
   'outfile' or, if 'outfile' is not specified, a default name based on the
   platform ('a.out' on Linux; 'out.exe' on Windows).
@@ -672,10 +727,10 @@ DESCRIPTION
   '-S', the compiler will not assemble, and if given '-c', the compiler will
   assemble each file, but will not link them together.
 
-  qntc uses 'nasm' and 'ld' internally for compiling asm to object files and
+  tqc uses 'nasm' and 'ld' internally for compiling asm to object files and
   linking object files into binaries. If 'nasm' is not in PATH, and '-S' is not
-  given, qntc will return an error. If 'ld' is not in PATH, and neither '-S' nor
-  '-c' is given, qntc will return an error.
+  given, tqc will return an error. If 'ld' is not in PATH, and neither '-S' nor
+  '-c' is given, tqc will return an error.
 
 OPTIONS
   -S          Compile, but do not assemble; output asm files. The created files
@@ -692,26 +747,26 @@ OPTIONS
               is subject to the same naming rules as '-S', except the '.o' file
               extension is used in place of '.asm'.
 
-  -v          Enables verbose mode. In this mode, the compiler will output
-              timestamped information about every stage of compilation. This
-              exists primarily for compiler debugging, but may be useful
-              elsewhere.
-
   -static     (default) Enables the use of static linkage for the produced
               binary. This has no effect if '-S' or '-c' is given.
 
   -shared     Enables the use of shared (dynamic) linkage for the produced
               binary. This has no effect if '-S' or '-c' is given.
 
-  -On         Set the optimisation level to 'n'. 'n' may be any integer from 0
-              to 9 inclusive; it specifies how aggressively optimisations should
-              be performed, where 0 means "perform no optimisations" and 9 means
-              "perform all optimisations". Note that higher optimisation levels
-              are not guaranteed to have any effect.
+  -O[n]       Set the optimisation level to 'n'. 'n' may be any integer
+              from 0 to 9 inclusive; it specifies how aggressively
+              optimisations should be performed, where 0 performs no
+              optimisations and 9 performs all optimisations. If not
+              given, 'n' defaults to 3. Note that higher optimisation
+              levels are not guaranteed to have any effect.
 
   -o outfile  Set the output filename.
 
 \end{verbatim}
+
+Some aspects of this interface may be unnecessary for this project; for
+instance, I am not currently planning to implement any compiler
+optimisations. However, putting the option in the source is high
 
 \subsection{Algorithm W}
 
@@ -772,27 +827,26 @@ formal name for type variables used during type checking / inference):
 \end{verbatim}
 
 Note that as a function type \verb'a -> b' is merely syntactic sugar for
-\verb'(->) a b', functions \verb'a -> b' are represented as
+\verb'(->) a b', which in turn (due to associativity of application)
+parses as \verb'((->) a) b', functions \verb'a -> b' are represented as
 \verb'TApp (TApp (TConc "->") a) b'.
 
 Algorithm W works by generating unification variables to stand for
 unknown types, and, as values are used in contexts that limit their
 type, generating a ``substitution'' - via a process called
 ``unification'' - which describes more specific ways of representing a
-unification variable. It can be described using a set of type rules.
-
-\subsubsection{Typing rules}
-
-TODO
+unification variable. The way this substitution is created can be
+mathematically described using a set of ``type rules''; however, this is
+out of the scope of this project.
 
 \subsection{Runtime}
 
 I have previously mentioned the language's runtime. This will be a piece
-of code written in C (and potentially some assembly) which contains its
+of code written in assembly which contains the compiled program's
 initialization code and garbage collector, as well as any other common
 routines that turn out to be neccesary in compiled code. This will be
-stored in either an object file or a static library file, and
-automatically linked against the generated objects by the compiler.
+stored in either an object file or a library file, and automatically
+linked against the generated objects by the compiler.
 
 \subsection{In-memory object representation}
 
@@ -802,16 +856,17 @@ type checking is that unlike languages like Python, all type information
 can be erased at runtime; this slightly decreases memory usage, and
 speeds up the code as types do not have to be checked during execution.
 
-An object (closure) can be modelled as a header, followed by some number
-of 1-word (8-byte) values, some of which are pointers. The header
-contains three main things. The first is a number describing the type of
-the object. This does not refer to the type in the context of the source
-language, but rather whether the object represents a thunk, a data
-constructor, or a function. The second thing the header contains is a
-record of how long the object's body is (how many 64-bit values are in
-it). This, combined with the object type, tells the garbage collector
-(GC) everything it needs to know about the object; specifically, how
-long the body is, and which fields are pointers to other objects.
+An object (often referred to by GHC as a ``closure'') can be modelled as
+a header, followed by some number of 1-word (8-byte) values, some of
+which are pointers. The header contains two main things. The first is a
+number describing the type of the object. This does not refer to the
+type in the context of the source language, but rather whether the
+object represents a thunk, a data constructor, or a function. The second
+thing the header contains is a record of how long the object's body is
+(how many 64-bit values are in it). This, combined with the object type,
+tells the garbage collector (GC) everything it needs to know about the
+object; specifically, how long the body is, and which fields are
+pointers to other objects.
 
 There are a few more types of object in memory. One is an indirection.
 When a thunk is evaluated, we want to update it in memory to contain the
@@ -863,16 +918,27 @@ This object layout can be understand as the following set of C
 declarations, assuming packed structs and 64-bit pointers:
 
 \begin{verbatim}
-  #define OBJ_FUN   0
-  #define OBJ_DATA  1
-  #define OBJ_THUNK 2
-  #define OBJ_IND   3
-  #define OBJ_GLOBL 4
-  #define OBJ_GLOBL_IND 5
+  #define FLAG_STATIC 1
+
+  #define OBJ_FUN      0  // Function (body contains a function
+                          // pointer followed by closure's object pointers)
+
+  #define OBJ_DATA     1  // Data constructor (body contains constructor ID
+                          // followed by pointers to argument objects)
+
+  #define OBJ_THUNK_0  2  // Nullary thunk (body contains a function
+                          // pointer followed by closure's object pointers)
+
+  #define OBJ_THUNK_1  3  // Unary thunk (body contains a function object
+                          // pointer, then an argument object pointer)
+
+  #define OBJ_IND      4  // Indirection (body contains one pointer
+                          // to another object)
 
   struct obj_header {
-    uint32_t obj_type;
-    uint32_t body_len;  // Total number of 64-bit values allocated in the body
+    uint16_t flags; // Specifies whether the object is a global
+    uint16_t obj_type;
+    uint32_t body_len; // Total number of 64-bit values allocated in the body
   };
 
   struct object {
@@ -880,7 +946,7 @@ declarations, assuming packed structs and 64-bit pointers:
 
     union {
       struct {
-        struct object *(*code)(struct object *arg, struct object *fun);
+        struct object *(*code)(struct object *fun, struct object *arg);
         struct object *closure_objs[];
       } fun;
 
@@ -890,20 +956,27 @@ declarations, assuming packed structs and 64-bit pointers:
       } data;
 
       struct {
+        struct object *(*code)(struct object *fun);
+        struct object *closure_objs[];
+      } thunk_0;
+
+      struct {
         struct object *func;
         struct object *arg;
-      } thunk;
+      } thunk_1;
 
       struct {
         struct object *target;
       } ind;
-
-      struct {
-        struct object *(*code)(void);
-      } globl;
     };
   };
 \end{verbatim}
+
+\subsection{Garbage Collector}
+
+Due to its complexity, I will not implement a garbage collector myself;
+instead, I will likely adapt a generic mark-and-sweep garbage collector
+available under an open source or public domain license.
 
 \section{Technical Solution}
 
@@ -967,9 +1040,9 @@ GHC's variant of Haskell. First, I created a simple enum datatype
 
 \begin{verbatim}
 data TqcPass
-	= Parsed
-	| Renamed
-	| Typechecked
+  = Parsed
+  | Renamed
+  | Typechecked
 \end{verbatim}
 
 Using the \verb'DataKinds' extension, I was able to parameterise the AST
@@ -1042,12 +1115,12 @@ data QntExpr p
 
 This type encodes every form of expression in the language:
 \begin{itemize}
-	\item A variable reference (i.e. a name)
-	\item A numeric literal
-	\item An application of two expressions
-	\item A lambda abstraction, containing a variable binder and a body expression
-	\item A let expression, containing a list of binds and a body expression
-	\item A case expression, containing an expression (the scrutineee) and a list of alternatives
+  \item A variable reference (i.e. a name)
+  \item A numeric literal
+  \item An application of two expressions
+  \item A lambda abstraction, containing a variable binder and a body expression
+  \item A let expression, containing a list of binds and a body expression
+  \item A case expression, containing an expression (the scrutineee) and a list of alternatives
 \end{itemize}
 
 This expression type uses the following ``utility'' types:
@@ -1099,5 +1172,39 @@ This combinator (effectively a higher-order function, as \verb'Parser'
 is a type wrapping a complex function type) simply works by getting the
 source position before and after running the given parser, and
 constructing a \verb'SrcSpan' based on these source positions.
+
+\section{Testing}
+
+Throughout the project, compilation stages were tested as they were
+written. The latter half of the compiler pipeline - the compilation of
+the Nucleus IR to a final binary - was written first. The primary test
+case used for this was a simple, inefficient, recursive fibonacci
+program, which would be represented in the source language as follows:
+
+\begin{verbatim}
+main = \ x ->
+  let { fib = \ n -> case n of
+        { 0 -> 1
+        ; 1 -> 1
+        ; _ -> fib (sub n 1)
+        }
+  } in fib x
+\end{verbatim}
+
+This simple example turns out to be a highly effective test of several
+parts of the compiler. Firstly, the expression used contains all
+different types of expression - case expressions, let bindings,
+applications, lambda abstractions, variables, and literals. This allows
+the test to ensure that the compilation code for each type of expression
+is working. Additionally, the code makes use of closures in the
+definition of \verb'fib' (where \verb'x' is captured in the closures of
+both the let-binding and the nested lambda). This acts as a test of the
+garbage collector; if it is unable to track object references through
+these complex data structures, objects will be re-allocated when they
+are still in use, and the program will give an incorrect result or even
+crash. Lastly, because the algorithm used is incredibly inefficient
+(running in exponential time, whereas the problem is solvable in linear
+time), it acts as a stress-test of the compiler's output, with which its
+memory usage and speed can be benchmarked.
 
 \end{document}
